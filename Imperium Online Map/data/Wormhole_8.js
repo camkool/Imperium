@@ -1,0 +1,1 @@
+var json_Wormhole_8 = {"type":"FeatureCollection","name":"Wormhole_8","crs":{"type":"name","properties":{"name":"urn:ogc:def:crs:OGC:1.3:CRS84"}},"features":[{"type":"Feature","properties":{"Name":"Wormhole"},"geometry":{"type":"Point","coordinates":[2.92975461546559,-0.752498053661982]}}]}

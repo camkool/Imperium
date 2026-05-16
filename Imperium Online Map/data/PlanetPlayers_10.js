@@ -1,0 +1,1 @@
+var json_PlanetPlayers_10 = {"type":"FeatureCollection","name":"PlanetPlayers_10","crs":{"type":"name","properties":{"name":"urn:ogc:def:crs:OGC:1.3:CRS84"}},"features":[{"type":"Feature","properties":{"Name":"Test"},"geometry":null}]}

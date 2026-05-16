@@ -1,0 +1,1 @@
+var json_GalacticStar_7 = {"type":"FeatureCollection","name":"GalacticStar_7","crs":{"type":"name","properties":{"name":"urn:ogc:def:crs:OGC:1.3:CRS84"}},"features":[{"type":"Feature","properties":{"Name":"Star of Ascendia"},"geometry":{"type":"Point","coordinates":[1.907042964023082,0.009068215654101]}}]}
