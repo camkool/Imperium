@@ -13,16 +13,954 @@
         <link rel="stylesheet" href="css/leaflet.photon.css">
         <link rel="stylesheet" href="css/leaflet-measure.css">
         <style>
+        :root {
+            --imp-black: #050506;
+            --imp-panel: rgba(10, 11, 13, 0.88);
+            --imp-panel-solid: #0b0c0f;
+            --imp-stone: #343334;
+            --imp-concrete: #7d7a70;
+            --imp-ash: #d8d3c4;
+            --imp-muted: #a39b88;
+            --imp-bronze: #9b7643;
+            --imp-gold: #d2ad54;
+            --imp-crimson: #7d151b;
+            --imp-red-glow: rgba(125, 21, 27, 0.55);
+            --imp-gold-glow: rgba(210, 173, 84, 0.45);
+            --imp-border: rgba(210, 173, 84, 0.46);
+            --imp-border-soft: rgba(210, 173, 84, 0.22);
+            --imp-text: #e7e0cf;
+            --imp-dim: #9d988c;
+        }
+
         html, body, #map {
             width: 100%;
             height: 100%;
             padding: 0;
             margin: 0;
         }
+
+        html, body {
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 50% 42%, rgba(120, 118, 105, 0.08), transparent 32%),
+                radial-gradient(circle at 75% 15%, rgba(125, 21, 27, 0.08), transparent 30%),
+                linear-gradient(180deg, #08090b 0%, #020203 100%);
+            font-family: "Segoe UI", "Bahnschrift", "Arial Narrow", Arial, sans-serif;
+            color: var(--imp-text);
+        }
+
+        #map {
+            background: #020203;
+            filter: contrast(1.12) saturate(0.88) brightness(0.88);
+        }
+
+        body::before {
+            content: "";
+            pointer-events: none;
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            background:
+                linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px),
+                radial-gradient(circle at 50% 50%, transparent 48%, rgba(0,0,0,0.56) 100%);
+            background-size: 42px 42px, 42px 42px, 100% 100%;
+            mix-blend-mode: screen;
+            opacity: 0.28;
+        }
+
+        body::after {
+            content: "";
+            pointer-events: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            border: 1px solid rgba(210, 173, 84, 0.24);
+            box-shadow:
+                inset 0 0 0 7px rgba(0,0,0,0.42),
+                inset 0 0 100px rgba(0,0,0,0.74);
+        }
+
+        .imperium-topbar {
+            position: fixed;
+            top: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001;
+            width: min(760px, calc(100vw - 32px));
+            min-height: 62px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            text-align: center;
+            background:
+                linear-gradient(90deg, rgba(0,0,0,0.18), rgba(210,173,84,0.08), rgba(0,0,0,0.18)),
+                linear-gradient(180deg, rgba(19,20,23,0.94), rgba(7,8,10,0.90));
+            border: 1px solid var(--imp-border);
+            box-shadow:
+                0 12px 36px rgba(0,0,0,0.52),
+                inset 0 1px 0 rgba(255,255,255,0.08),
+                inset 0 -1px 0 rgba(125,21,27,0.36);
+            clip-path: polygon(18px 0, calc(100% - 18px) 0, 100% 18px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 18px);
+            backdrop-filter: blur(10px);
+        }
+
+        .imperium-title {
+            width: 100%;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.24em;
+            font-weight: 800;
+            line-height: 1.08;
+            color: var(--imp-ash);
+            text-shadow: 0 0 16px rgba(210, 173, 84, 0.24);
+            white-space: nowrap;
+        }
+
+        .imperium-title span {
+            display: block;
+            margin-top: 4px;
+            font-size: 10px;
+            letter-spacing: 0.42em;
+            color: var(--imp-gold);
+            font-weight: 600;
+        }
+
+
+        .imperium-coordinates {
+            position: fixed;
+            left: 16px;
+            bottom: 18px;
+            z-index: 1001;
+            max-width: calc(100vw - 32px);
+            padding: 9px 12px;
+            background: rgba(5,6,8,0.86);
+            border: 1px solid rgba(210,173,84,0.30);
+            color: var(--imp-muted);
+            font-size: 11px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.48);
+            backdrop-filter: blur(8px);
+        }
+
+
+        .leaflet-top {
+            top: 100px;
+        }
+
+        .leaflet-left {
+            left: 16px;
+        }
+
+        .leaflet-right {
+            right: 16px;
+        }
+
+        .leaflet-control {
+            border: 1px solid rgba(210,173,84,0.38) !important;
+            background: rgba(7,8,10,0.88) !important;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.45) !important;
+            color: var(--imp-text) !important;
+            backdrop-filter: blur(8px);
+        }
+
+        .leaflet-bar a,
+        .leaflet-bar a:hover {
+            width: 34px !important;
+            height: 34px !important;
+            line-height: 34px !important;
+            background: rgba(10,11,13,0.95) !important;
+            border-bottom: 1px solid rgba(210,173,84,0.26) !important;
+            color: var(--imp-gold) !important;
+            text-shadow: 0 0 12px rgba(210,173,84,0.35);
+        }
+
+        .leaflet-bar a:hover {
+            background: rgba(72,19,22,0.85) !important;
+            color: var(--imp-ash) !important;
+        }
+
+        .leaflet-control-layers {
+            max-width: min(320px, calc(100vw - 32px));
+            padding: 10px 12px !important;
+            background:
+                linear-gradient(135deg, rgba(125,21,27,0.18), transparent 42%),
+                rgba(7,8,10,0.90) !important;
+        }
+
+        .leaflet-control-layers-expanded {
+            color: var(--imp-text) !important;
+        }
+
+        .leaflet-control-layers-list {
+            color: var(--imp-text);
+            font-size: 12px;
+            line-height: 1.55;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .leaflet-control-layers label {
+            color: var(--imp-muted);
+        }
+
+        .leaflet-control-layers label:hover {
+            color: var(--imp-ash);
+        }
+
+        .leaflet-layerstree-header-label b {
+            color: var(--imp-gold);
+            font-weight: 800;
+            letter-spacing: 0.14em;
+        }
+
+        .leaflet-control-layers-toggle {
+            background-color: rgba(7,8,10,0.92) !important;
+            filter: invert(0.82) sepia(0.2) saturate(1.2);
+        }
+
+        .leaflet-popup-content-wrapper,
+        .leaflet-popup-tip {
+            background:
+                linear-gradient(135deg, rgba(125,21,27,0.18), transparent 38%),
+                rgba(8,9,11,0.96) !important;
+            color: var(--imp-text) !important;
+            border: 1px solid rgba(210,173,84,0.38);
+            box-shadow: 0 16px 44px rgba(0,0,0,0.62);
+            border-radius: 0 !important;
+        }
+
+        .leaflet-popup-content {
+            margin: 14px 16px !important;
+            min-width: 180px;
+            font-size: 12px;
+            letter-spacing: 0.05em;
+        }
+
+        .leaflet-popup-content table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .leaflet-popup-content td {
+            border-bottom: 1px solid rgba(210,173,84,0.16);
+            padding: 8px 0;
+        }
+
+        .leaflet-popup-content strong {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--imp-gold);
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            font-size: 10px;
+        }
+
+        .leaflet-popup-close-button {
+            color: var(--imp-gold) !important;
+        }
+
+        .leaflet-control-attribution {
+            background: rgba(0,0,0,0.55) !important;
+            color: rgba(216,211,196,0.45) !important;
+            font-size: 10px;
+            border: 0 !important;
+        }
+
+        .leaflet-control-attribution a {
+            color: rgba(210,173,84,0.65) !important;
+        }
+
+        .info {
+            display: none;
+        }
+
+        .leaflet-control-measure-toggle {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .leaflet-measure-resultpopup h3,
+        .leaflet-measure-resultpopup .leaflet-popup-content {
+            color: var(--imp-text) !important;
+        }
+
+
+        .leaflet-control-measure,
+        .leaflet-control-measure-interaction {
+            background:
+                linear-gradient(135deg, rgba(125,21,27,0.18), transparent 42%),
+                rgba(7,8,10,0.94) !important;
+            color: var(--imp-text) !important;
+            border: 1px solid rgba(210,173,84,0.38) !important;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.45) !important;
+        }
+
+        .leaflet-control-measure a,
+        .leaflet-control-measure-toggle,
+        .leaflet-control-measure-toggle:hover {
+            background: rgba(10,11,13,0.95) !important;
+            color: var(--imp-gold) !important;
+            border-bottom: 1px solid rgba(210,173,84,0.26) !important;
+            text-shadow: 0 0 12px rgba(210,173,84,0.35);
+        }
+
+        .leaflet-control-measure .tasks,
+        .leaflet-control-measure .task,
+        .leaflet-control-measure .coorddivider {
+            color: var(--imp-text) !important;
+            background: transparent !important;
+            border-color: rgba(210,173,84,0.18) !important;
+        }
+
+        .leaflet-control-measure .task:hover {
+            background: rgba(125,21,27,0.28) !important;
+        }
+
+        .leaflet-control-measure .startprompt h3,
+        .leaflet-control-measure .results .group,
+        .leaflet-control-measure .results .heading,
+        .leaflet-control-measure .results .value,
+        .leaflet-control-measure .results .unit,
+        .leaflet-control-measure .results .button,
+        .leaflet-control-measure .results {
+            color: var(--imp-text) !important;
+        }
+
+        .leaflet-control-measure .results {
+            background: rgba(8,9,11,0.96) !important;
+        }
+
+        .leaflet-measure-resultpopup .leaflet-popup-content-wrapper,
+        .leaflet-measure-resultpopup .leaflet-popup-tip,
+        .leaflet-popup.leaflet-measure-resultpopup .leaflet-popup-content-wrapper,
+        .leaflet-popup.leaflet-measure-resultpopup .leaflet-popup-tip {
+            background:
+                linear-gradient(135deg, rgba(125,21,27,0.20), transparent 36%),
+                linear-gradient(180deg, rgba(16,17,20,0.98), rgba(7,8,10,0.98)) !important;
+            color: var(--imp-text) !important;
+            border: 1px solid rgba(210,173,84,0.42) !important;
+            box-shadow: 0 18px 44px rgba(0,0,0,0.68), inset 0 0 0 1px rgba(255,255,255,0.03) !important;
+            border-radius: 0 !important;
+        }
+
+        .leaflet-measure-resultpopup .leaflet-popup-content,
+        .leaflet-popup.leaflet-measure-resultpopup .leaflet-popup-content {
+            margin: 14px 16px !important;
+            min-width: 230px;
+            color: var(--imp-text) !important;
+            font-size: 12px !important;
+            line-height: 1.45 !important;
+        }
+
+        .leaflet-measure-resultpopup h2,
+        .leaflet-measure-resultpopup h3,
+        .leaflet-popup.leaflet-measure-resultpopup h2,
+        .leaflet-popup.leaflet-measure-resultpopup h3 {
+            margin: 0 0 10px !important;
+            color: var(--imp-gold) !important;
+            font-size: 12px !important;
+            font-weight: 800 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.14em !important;
+            border-bottom: 1px solid rgba(210,173,84,0.20) !important;
+            padding-bottom: 8px !important;
+            background: transparent !important;
+        }
+
+        .leaflet-measure-resultpopup p,
+        .leaflet-measure-resultpopup .lastpoint,
+        .leaflet-measure-resultpopup .heading,
+        .leaflet-measure-resultpopup .value,
+        .leaflet-measure-resultpopup .unit,
+        .leaflet-popup.leaflet-measure-resultpopup p {
+            color: var(--imp-text) !important;
+        }
+
+        .leaflet-measure-resultpopup table,
+        .leaflet-popup.leaflet-measure-resultpopup table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin: 8px 0 12px !important;
+            background: rgba(0,0,0,0.16) !important;
+        }
+
+        .leaflet-measure-resultpopup tr,
+        .leaflet-popup.leaflet-measure-resultpopup tr {
+            border-bottom: 1px solid rgba(210,173,84,0.14) !important;
+        }
+
+        .leaflet-measure-resultpopup td,
+        .leaflet-popup.leaflet-measure-resultpopup td {
+            padding: 8px 6px !important;
+            color: var(--imp-text) !important;
+            background: transparent !important;
+            border: 0 !important;
+        }
+
+        .leaflet-measure-resultpopup td:first-child,
+        .leaflet-popup.leaflet-measure-resultpopup td:first-child {
+            color: var(--imp-muted) !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.08em !important;
+            font-size: 10px !important;
+        }
+
+        .leaflet-measure-resultpopup td:last-child,
+        .leaflet-popup.leaflet-measure-resultpopup td:last-child {
+            text-align: right !important;
+            font-weight: 700 !important;
+        }
+
+        .leaflet-measure-resultpopup .tasks,
+        .leaflet-measure-resultpopup .button,
+        .leaflet-measure-resultpopup a.button,
+        .leaflet-popup.leaflet-measure-resultpopup .button,
+        .leaflet-popup.leaflet-measure-resultpopup a.button {
+            color: var(--imp-gold) !important;
+            background: rgba(255,255,255,0.05) !important;
+            border: 1px solid rgba(210,173,84,0.28) !important;
+            padding: 6px 10px !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.08em !important;
+            font-size: 11px !important;
+            text-decoration: none !important;
+            display: inline-block !important;
+            margin-top: 8px !important;
+        }
+
+        .leaflet-measure-resultpopup .button:hover,
+        .leaflet-measure-resultpopup a.button:hover,
+        .leaflet-popup.leaflet-measure-resultpopup .button:hover,
+        .leaflet-popup.leaflet-measure-resultpopup a.button:hover {
+            background: rgba(125,21,27,0.32) !important;
+            color: var(--imp-ash) !important;
+        }
+
+        .leaflet-measure-resultpopup .leaflet-popup-close-button,
+        .leaflet-popup.leaflet-measure-resultpopup .leaflet-popup-close-button {
+            color: var(--imp-gold) !important;
+            top: 8px !important;
+            right: 8px !important;
+        }
+
+
+        .leaflet-control-measure .startprompt,
+        .leaflet-control-measure .results,
+        .leaflet-control-measure .measuretasks {
+            background: rgba(8,9,11,0.97) !important;
+        }
+
+        .leaflet-control-measure .startprompt {
+            padding: 10px !important;
+        }
+
+        .leaflet-control-measure .results {
+            padding: 10px !important;
+            border-top: 1px solid rgba(210,173,84,0.18) !important;
+        }
+
+        .leaflet-control-measure .results .group {
+            border-bottom: 1px solid rgba(210,173,84,0.14) !important;
+            padding: 6px 0 !important;
+        }
+
+        .leaflet-control-measure .results .heading {
+            color: var(--imp-muted) !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.08em !important;
+            font-size: 10px !important;
+        }
+
+        .leaflet-control-measure .results .value {
+            color: var(--imp-ash) !important;
+            font-weight: 700 !important;
+        }
+
+        .leaflet-control-measure .results .button {
+            background: rgba(255,255,255,0.05) !important;
+            border: 1px solid rgba(210,173,84,0.28) !important;
+            color: var(--imp-gold) !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.08em !important;
+        }
+
+        .leaflet-measure-path,
+        .leaflet-measure-path-measure,
+        .leaflet-measure-path-interact {
+            stroke: rgba(210,173,84,0.95) !important;
+        }
+
+
+        /* HARD OVERRIDE: Leaflet Measure plugin interaction panel */
+        .leaflet-control-measure,
+        .leaflet-control-measure *,
+        .leaflet-control-measure-interaction,
+        .leaflet-control-measure-interaction * {
+            box-sizing: border-box !important;
+        }
+
+        .leaflet-control-measure-interaction,
+        .leaflet-control-measure .leaflet-control-measure-interaction,
+        .leaflet-control-measure .content,
+        .leaflet-control-measure .startprompt,
+        .leaflet-control-measure .results,
+        .leaflet-control-measure .measuretasks,
+        .leaflet-control-measure .tasks {
+            background:
+                linear-gradient(135deg, rgba(125,21,27,0.18), transparent 34%),
+                linear-gradient(180deg, rgba(16,17,20,0.98), rgba(7,8,10,0.98)) !important;
+            color: var(--imp-text) !important;
+            border-color: rgba(210,173,84,0.26) !important;
+        }
+
+        .leaflet-control-measure-interaction {
+            min-width: 320px !important;
+            padding: 12px 14px !important;
+            border: 1px solid rgba(210,173,84,0.42) !important;
+            box-shadow:
+                0 18px 44px rgba(0,0,0,0.68),
+                inset 0 0 0 1px rgba(255,255,255,0.03) !important;
+        }
+
+        .leaflet-control-measure-interaction h1,
+        .leaflet-control-measure-interaction h2,
+        .leaflet-control-measure-interaction h3,
+        .leaflet-control-measure .startprompt h1,
+        .leaflet-control-measure .startprompt h2,
+        .leaflet-control-measure .startprompt h3 {
+            margin: 0 0 10px !important;
+            padding: 0 0 9px !important;
+            color: var(--imp-gold) !important;
+            background: transparent !important;
+            border-bottom: 1px solid rgba(210,173,84,0.20) !important;
+            font-size: 12px !important;
+            font-weight: 800 !important;
+            line-height: 1.35 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.12em !important;
+            text-shadow: 0 0 10px rgba(210,173,84,0.22) !important;
+        }
+
+        .leaflet-control-measure-interaction p,
+        .leaflet-control-measure-interaction span,
+        .leaflet-control-measure-interaction div,
+        .leaflet-control-measure .startprompt,
+        .leaflet-control-measure .startprompt p,
+        .leaflet-control-measure .results,
+        .leaflet-control-measure .results * {
+            color: var(--imp-text) !important;
+            background-color: transparent !important;
+            text-shadow: none !important;
+        }
+
+        .leaflet-control-measure-interaction .startprompt,
+        .leaflet-control-measure .startprompt {
+            border-bottom: 1px solid rgba(210,173,84,0.16) !important;
+            margin-bottom: 10px !important;
+            padding-bottom: 10px !important;
+            font-size: 12px !important;
+            line-height: 1.45 !important;
+        }
+
+        .leaflet-control-measure-interaction .tasks,
+        .leaflet-control-measure .tasks {
+            display: flex !important;
+            gap: 10px !important;
+            align-items: center !important;
+            margin-top: 10px !important;
+            padding-top: 10px !important;
+            border-top: 1px solid rgba(210,173,84,0.16) !important;
+        }
+
+        .leaflet-control-measure-interaction a,
+        .leaflet-control-measure-interaction button,
+        .leaflet-control-measure .tasks a,
+        .leaflet-control-measure .tasks button,
+        .leaflet-control-measure .button,
+        .leaflet-control-measure a.button {
+            min-height: 28px !important;
+            padding: 6px 12px !important;
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.015)) !important;
+            border: 1px solid rgba(210,173,84,0.34) !important;
+            color: var(--imp-gold) !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.08em !important;
+            line-height: 1.2 !important;
+            text-decoration: none !important;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.30) !important;
+        }
+
+        .leaflet-control-measure-interaction a:hover,
+        .leaflet-control-measure-interaction button:hover,
+        .leaflet-control-measure .tasks a:hover,
+        .leaflet-control-measure .tasks button:hover,
+        .leaflet-control-measure .button:hover,
+        .leaflet-control-measure a.button:hover {
+            background: rgba(125,21,27,0.34) !important;
+            color: var(--imp-ash) !important;
+            border-color: rgba(210,173,84,0.62) !important;
+        }
+
+        .leaflet-control-measure-interaction hr,
+        .leaflet-control-measure hr {
+            border: 0 !important;
+            border-top: 1px solid rgba(210,173,84,0.18) !important;
+            margin: 10px 0 !important;
+        }
+
+        .leaflet-control-measure-interaction table,
+        .leaflet-control-measure table {
+            background: rgba(0,0,0,0.18) !important;
+            color: var(--imp-text) !important;
+            border-collapse: collapse !important;
+        }
+
+        .leaflet-control-measure-interaction td,
+        .leaflet-control-measure table td {
+            background: transparent !important;
+            color: var(--imp-text) !important;
+            border-bottom: 1px solid rgba(210,173,84,0.12) !important;
+            padding: 7px 5px !important;
+        }
+
+        .leaflet-control-measure-interaction .close,
+        .leaflet-control-measure .close {
+            color: var(--imp-gold) !important;
+            opacity: 1 !important;
+        }
+
+
+        .imperium-travel-time {
+            margin-top: 10px !important;
+            padding: 9px 10px !important;
+            background:
+                linear-gradient(90deg, rgba(125,21,27,0.20), rgba(210,173,84,0.08)),
+                rgba(0,0,0,0.24) !important;
+            border: 1px solid rgba(210,173,84,0.34) !important;
+            color: var(--imp-ash) !important;
+            font-size: 12px !important;
+            line-height: 1.35 !important;
+            letter-spacing: 0.04em !important;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.28) !important;
+        }
+
+        .imperium-travel-time strong {
+            display: block !important;
+            margin-bottom: 3px !important;
+            color: var(--imp-gold) !important;
+            font-size: 10px !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.14em !important;
+        }
+
+        .imperium-travel-time span {
+            color: var(--imp-ash) !important;
+            font-weight: 800 !important;
+        }
+
+        .imperium-travel-time small {
+            display: block !important;
+            margin-top: 3px !important;
+            color: var(--imp-muted) !important;
+            font-size: 10px !important;
+            letter-spacing: 0.06em !important;
+        }
+
+
+        .imperium-custom-measure-control a.is-active {
+            background: rgba(125,21,27,0.82) !important;
+            color: var(--imp-ash) !important;
+            box-shadow: inset 0 0 0 1px rgba(210,173,84,0.22);
+        }
+
+        .imperium-draw-control a.is-active {
+            background: rgba(125,21,27,0.82) !important;
+            color: var(--imp-ash) !important;
+            box-shadow: inset 0 0 0 1px rgba(210,173,84,0.22);
+        }
+
+        .imperium-measure-panel {
+            position: fixed;
+            left: 62px;
+            top: 142px;
+            z-index: 1002;
+            width: min(320px, calc(100vw - 32px));
+            padding: 14px 14px 12px;
+            background:
+                linear-gradient(135deg, rgba(125,21,27,0.20), transparent 34%),
+                linear-gradient(180deg, rgba(16,17,20,0.98), rgba(7,8,10,0.98));
+            border: 1px solid rgba(210,173,84,0.42);
+            box-shadow: 0 18px 44px rgba(0,0,0,0.68), inset 0 0 0 1px rgba(255,255,255,0.03);
+            backdrop-filter: blur(10px);
+        }
+
+        .imperium-measure-panel.is-hidden {
+            display: none;
+        }
+
+        .imperium-measure-panel h3 {
+            margin: 0 0 10px;
+            padding: 0 0 9px;
+            color: var(--imp-gold);
+            background: transparent;
+            border-bottom: 1px solid rgba(210,173,84,0.20);
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1.35;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            text-shadow: 0 0 10px rgba(210,173,84,0.22);
+        }
+
+        .imperium-measure-instruction {
+            margin: 0 0 12px;
+            color: var(--imp-text);
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        .imperium-measure-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .imperium-measure-stat {
+            padding: 9px 10px;
+            background: rgba(0,0,0,0.18);
+            border: 1px solid rgba(210,173,84,0.14);
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.28);
+        }
+
+        .imperium-measure-stat strong {
+            display: block;
+            margin-bottom: 3px;
+            color: var(--imp-muted);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+        }
+
+        .imperium-measure-stat span {
+            color: var(--imp-ash);
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+
+        .imperium-measure-panel small {
+            display: block;
+            margin-top: 2px;
+            color: var(--imp-muted);
+            font-size: 10px;
+            letter-spacing: 0.05em;
+        }
+
+        .imperium-measure-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 8px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(210,173,84,0.16);
+        }
+
+        .imperium-measure-btn {
+            min-height: 28px;
+            padding: 6px 12px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.015));
+            border: 1px solid rgba(210,173,84,0.34);
+            color: var(--imp-gold);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            line-height: 1.2;
+            text-decoration: none;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.30);
+            cursor: pointer;
+        }
+
+        .imperium-measure-btn:hover {
+            background: rgba(125,21,27,0.34);
+            color: var(--imp-ash);
+            border-color: rgba(210,173,84,0.62);
+        }
+
+        .imperium-draw-panel {
+            position: fixed;
+            left: 62px;
+            top: 142px;
+            z-index: 1002;
+            width: min(340px, calc(100vw - 32px));
+            padding: 14px 14px 12px;
+            background:
+                linear-gradient(135deg, rgba(125,21,27,0.20), transparent 34%),
+                linear-gradient(180deg, rgba(16,17,20,0.98), rgba(7,8,10,0.98));
+            border: 1px solid rgba(210,173,84,0.42);
+            box-shadow: 0 18px 44px rgba(0,0,0,0.68), inset 0 0 0 1px rgba(255,255,255,0.03);
+            backdrop-filter: blur(10px);
+        }
+
+        .imperium-draw-panel.is-hidden {
+            display: none;
+        }
+
+        .imperium-draw-panel h3 {
+            margin: 0 0 10px;
+            padding: 0 0 9px;
+            color: var(--imp-gold);
+            background: transparent;
+            border-bottom: 1px solid rgba(210,173,84,0.20);
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1.35;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            text-shadow: 0 0 10px rgba(210,173,84,0.22);
+        }
+
+        .imperium-draw-row {
+            display: grid;
+            grid-template-columns: 82px 1fr;
+            gap: 10px;
+            align-items: center;
+            margin: 10px 0;
+            color: var(--imp-muted);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .imperium-draw-row input[type="color"] {
+            width: 100%;
+            height: 30px;
+            padding: 0;
+            background: rgba(0,0,0,0.28);
+            border: 1px solid rgba(210,173,84,0.28);
+            cursor: pointer;
+        }
+
+        .imperium-draw-row input[type="range"] {
+            width: 100%;
+            accent-color: var(--imp-gold);
+        }
+
+        .imperium-draw-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(210,173,84,0.16);
+        }
+
+        .imperium-draw-btn {
+            min-height: 28px;
+            padding: 6px 12px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.015));
+            border: 1px solid rgba(210,173,84,0.34);
+            color: var(--imp-gold);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            line-height: 1.2;
+            text-decoration: none;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.30);
+            cursor: pointer;
+        }
+
+        .imperium-draw-btn:hover {
+            background: rgba(125,21,27,0.34);
+            color: var(--imp-ash);
+            border-color: rgba(210,173,84,0.62);
+        }
+
+        .imperium-draw-canvas {
+            position: absolute;
+            inset: 0;
+            z-index: 620;
+            pointer-events: none;
+            touch-action: none;
+        }
+
+        .imperium-draw-canvas.is-active {
+            pointer-events: auto;
+            cursor: crosshair;
+        }
+
+
+        .leaflet-pane.pane_ImperiumMeasurement {
+            filter: drop-shadow(0 0 6px rgba(216,211,196,0.45)) drop-shadow(0 0 10px rgba(125,21,27,0.45));
+        }
+
+        @media (max-width: 760px) {
+            .imperium-topbar {
+                top: 10px;
+                width: calc(100vw - 20px);
+                min-height: 48px;
+                padding: 10px 12px;
+            }
+
+            .imperium-title {
+                font-size: 13px;
+                letter-spacing: 0.16em;
+            }
+
+            .imperium-title span {
+                font-size: 8px;
+                letter-spacing: 0.22em;
+            }
+
+            .leaflet-top {
+                top: 76px;
+            }
+
+            .imperium-coordinates {
+                font-size: 9px;
+                right: 10px;
+                left: 10px;
+                text-align: center;
+            }
+
+            .imperium-measure-panel {
+                left: 10px;
+                right: 10px;
+                top: 118px;
+                width: auto;
+            }
+
+            .imperium-draw-panel {
+                left: 10px;
+                right: 10px;
+                top: 118px;
+                width: auto;
+            }
+        }
         </style>
         <title>Imperium Map</title>
     </head>
     <body>
+        <div class="imperium-topbar">
+            <div class="imperium-title">
+                Imperium Galactic Cartography
+                <span>Strategic Star Chart // Imperial Council Access</span>
+            </div>
+        </div>
+
+        <div class="imperium-coordinates" id="imperiumCoordinates">Cursor: awaiting signal</div>
+
         <div id="map">
         </div>
         <script src="js/qgis2web_expressions.js"></script>
@@ -131,23 +1069,45 @@
             return this._div;
         };
         title.update = function () {
-            this._div.innerHTML = '<h2>Imperium Map</h2>';
+            this._div.innerHTML = '<h2>Imperium Galactic Cartography</h2>';
         };
         title.addTo(map);
         var zoomControl = L.control.zoom({
             position: 'topleft'
         }).addTo(map);
-        var measureControl = new L.Control.Measure({
-            position: 'topleft',
-            primaryLengthUnit: 'meters',
-            secondaryLengthUnit: 'kilometers',
-            primaryAreaUnit: 'sqmeters',
-            secondaryAreaUnit: 'hectares'
-        });
-        measureControl.addTo(map);
-        document.getElementsByClassName('leaflet-control-measure-toggle')[0].innerHTML = '';
-        document.getElementsByClassName('leaflet-control-measure-toggle')[0].className += ' fas fa-ruler';
         var bounds_group = new L.featureGroup([]);
+
+        map.createPane('pane_ImperiumMeasurement');
+        map.getPane('pane_ImperiumMeasurement').style.zIndex = 650;
+        map.getPane('pane_ImperiumMeasurement').style.pointerEvents = 'none';
+        map.createPane('pane_ImperiumDraw');
+        map.getPane('pane_ImperiumDraw').style.zIndex = 620;
+        map.getPane('pane_ImperiumDraw').style.pointerEvents = 'none';
+
+        var imperiumPlanetaryStates = {
+            'planet example': {
+                Economy: 'Growing',
+                Military: 'Weak',
+                Resource: 'Raw Materials',
+                Species: 'Troghorn'
+            }
+        };
+
+        function imperiumPlanetStateRows(feature) {
+            if (!feature || !feature.properties || !feature.properties.Name) return '';
+            var state = imperiumPlanetaryStates[String(feature.properties.Name).trim().toLowerCase()];
+            if (!state) return '';
+
+            var rows = '';
+            ['Economy', 'Military', 'Resource', 'Species'].forEach(function(label) {
+                if (!state[label]) return;
+                rows += '<tr><td colspan="2"><strong>' + label + '</strong><br />'
+                    + autolinker.link(String(state[label]).replace(/'/g, '\'').toLocaleString())
+                    + '</td></tr>';
+            });
+            return rows;
+        }
+
         function setBounds() {
         }
         function pop_BackgroundStars_0(feature, layer) {
@@ -165,14 +1125,14 @@
                 pane: 'pane_BackgroundStars_0',
                 radius: 0.8,
                 opacity: 1,
-                color: 'rgba(35,35,35,1.0)',
+                color: 'rgba(6,6,7,1.0)',
                 dashArray: '',
                 lineCap: 'butt',
                 lineJoin: 'miter',
                 weight: 1,
                 fill: true,
                 fillOpacity: 1,
-                fillColor: 'rgba(255,255,255,1.0)',
+                fillColor: 'rgba(216,211,196,0.95)',
                 interactive: false,
             }
         }
@@ -213,14 +1173,14 @@
             return {
                 pane: 'pane_GalacticLight_1',
                 opacity: 1,
-                color: 'rgba(0,0,0,1.0)',
+                color: 'rgba(210,173,84,0.24)',
                 dashArray: '',
                 lineCap: 'butt',
                 lineJoin: 'miter',
                 weight: 1.0, 
                 fill: true,
                 fillOpacity: 1,
-                fillColor: 'rgba(205,251,255,0.1450980392156863)',
+                fillColor: 'rgba(216,211,196,0.08)',
                 interactive: false,
             }
         }
@@ -255,14 +1215,14 @@
             return {
                 pane: 'pane_GalacticArm_2',
                 opacity: 1,
-                color: 'rgba(35,35,35,1.0)',
+                color: 'rgba(6,6,7,1.0)',
                 dashArray: '',
                 lineCap: 'butt',
                 lineJoin: 'miter',
                 weight: 1.0, 
                 fill: true,
                 fillOpacity: 1,
-                fillColor: 'rgba(193,206,206,0.30196078431372547)',
+                fillColor: 'rgba(130,126,112,0.22)',
                 interactive: false,
             }
         }
@@ -297,14 +1257,14 @@
             return {
                 pane: 'pane_Sector3_3',
                 opacity: 1,
-                color: 'rgba(35,35,35,1.0)',
+                color: 'rgba(6,6,7,1.0)',
                 dashArray: '',
                 lineCap: 'butt',
                 lineJoin: 'miter',
                 weight: 1.0, 
                 fill: true,
                 fillOpacity: 1,
-                fillColor: 'rgba(185,122,101,0.22745098039215686)',
+                fillColor: 'rgba(125,21,27,0.20)',
                 interactive: false,
             }
         }
@@ -339,14 +1299,14 @@
             return {
                 pane: 'pane_Sector2_4',
                 opacity: 1,
-                color: 'rgba(35,35,35,1.0)',
+                color: 'rgba(6,6,7,1.0)',
                 dashArray: '',
                 lineCap: 'butt',
                 lineJoin: 'miter',
                 weight: 1.0, 
                 fill: true,
                 fillOpacity: 1,
-                fillColor: 'rgba(173,94,143,0.23921568627450981)',
+                fillColor: 'rgba(155,118,67,0.18)',
                 interactive: false,
             }
         }
@@ -381,14 +1341,14 @@
             return {
                 pane: 'pane_Sector1_5',
                 opacity: 1,
-                color: 'rgba(35,35,35,1.0)',
+                color: 'rgba(6,6,7,1.0)',
                 dashArray: '',
                 lineCap: 'butt',
                 lineJoin: 'miter',
                 weight: 1.0, 
                 fill: true,
                 fillOpacity: 1,
-                fillColor: 'rgba(182,111,118,0.25098039215686274)',
+                fillColor: 'rgba(216,211,196,0.13)',
                 interactive: false,
             }
         }
@@ -423,11 +1383,12 @@
             return {
                 pane: 'pane_HyperspaceLanes_6',
                 opacity: 1,
-                color: 'rgba(213,180,60,1.0)',
+                color: 'rgba(210,173,84,0.95)',
                 dashArray: '',
                 lineCap: 'square',
                 lineJoin: 'bevel',
-                weight: 1.0,
+                weight: 2.0,
+                dashArray: '7, 9',
                 fillOpacity: 0,
                 interactive: true,
             }
@@ -464,14 +1425,14 @@
                 pane: 'pane_GalacticStar_7',
                 radius: 46.8,
                 opacity: 1,
-                color: 'rgba(35,35,35,1.0)',
+                color: 'rgba(6,6,7,1.0)',
                 dashArray: '',
                 lineCap: 'butt',
                 lineJoin: 'miter',
                 weight: 1,
                 fill: true,
                 fillOpacity: 1,
-                fillColor: 'rgba(213,188,25,1.0)',
+                fillColor: 'rgba(210,173,84,0.92)',
                 interactive: false,
             }
         }
@@ -549,6 +1510,7 @@
                     <tr>\
                         <td colspan="2"><strong>Name</strong><br />' + (feature.properties['Name'] !== null ? autolinker.link(String(feature.properties['Name']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
                     </tr>\
+                    ' + imperiumPlanetStateRows(feature) + '\
                 </table>';
             var content = removeEmptyRowsFromPopupContent(popupContent, feature);
 			layer.on('popupopen', function(e) {
@@ -598,6 +1560,7 @@
                     <tr>\
                         <td colspan="2"><strong>Name</strong><br />' + (feature.properties['Name'] !== null ? autolinker.link(String(feature.properties['Name']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
                     </tr>\
+                    ' + imperiumPlanetStateRows(feature) + '\
                 </table>';
             var content = removeEmptyRowsFromPopupContent(popupContent, feature);
 			layer.on('popupopen', function(e) {
@@ -716,6 +1679,673 @@
                 }, 500);
             }  
         });       
+
+        map.on('mousemove', function(e) {
+            var coord = document.getElementById('imperiumCoordinates');
+            if (coord) {
+                coord.textContent = 'Cursor: X ' + e.latlng.lng.toFixed(4) + ' / Y ' + e.latlng.lat.toFixed(4) + ' // EPSG:3857 strategic grid';
+            }
+        });
+
+        function imperialHover(layer, hoverStyle) {
+            layer.eachLayer(function(each) {
+                each.on('mouseover', function() {
+                    if (each.setStyle) {
+                        each.setStyle(hoverStyle);
+                    }
+                    if (each.bringToFront) {
+                        each.bringToFront();
+                    }
+                });
+                each.on('mouseout', function() {
+                    if (each.setStyle && layer.resetStyle) {
+                        layer.resetStyle(each);
+                    }
+                });
+            });
+        }
+
+        imperialHover(layer_HyperspaceLanes_6, {
+            color: 'rgba(210,173,84,1)',
+            weight: 4,
+            opacity: 1
+        });
+
+
+        function imperiumFormatTravelTime(totalSeconds) {
+            totalSeconds = Math.max(0, Math.round(totalSeconds));
+            var hours = Math.floor(totalSeconds / 3600);
+            var minutes = Math.floor((totalSeconds % 3600) / 60);
+            var seconds = totalSeconds % 60;
+
+            return String(hours).padStart(2, '0') + 'h '
+                + String(minutes).padStart(2, '0') + 'm '
+                + String(seconds).padStart(2, '0') + 's';
+        }
+
+        function imperiumFormatNumber(value) {
+            return Math.round(value).toLocaleString();
+        }
+
+        var imperiumMeasureState = {
+            active: false,
+            finished: false,
+            points: [],
+            markers: [],
+            line: null,
+            lineGlow: null,
+            panel: null,
+            controlButton: null
+        };
+
+        function imperiumInteractiveMeasureLayers() {
+            return [
+                layer_HyperspaceLanes_6,
+                layer_Wormhole_8,
+                layer_PlanetNPC_9,
+                layer_PlanetPlayers_10
+            ];
+        }
+
+        function imperiumSetMeasurementInteractionLock(locked) {
+            var panesToLock = [
+                'pane_HyperspaceLanes_6',
+                'pane_Wormhole_8',
+                'pane_PlanetNPC_9',
+                'pane_PlanetPlayers_10'
+            ];
+
+            panesToLock.forEach(function(paneName) {
+                var pane = map.getPane(paneName);
+                if (pane) {
+                    // This stops hover highlighting and popups while measuring.
+                    pane.style.pointerEvents = locked ? 'none' : '';
+                }
+            });
+
+            if (locked) {
+                map.closePopup();
+                imperiumResetInteractiveLayerStyles();
+            }
+        }
+
+        function imperiumResetInteractiveLayerStyles() {
+            imperiumInteractiveMeasureLayers().forEach(function(layer) {
+                if (!layer || !layer.eachLayer || !layer.resetStyle) return;
+                layer.eachLayer(function(each) {
+                    layer.resetStyle(each);
+                });
+            });
+        }
+
+        function imperiumFlattenLatLngs(latlngs) {
+            var flattened = [];
+            function walk(value) {
+                if (!value) return;
+                if (Array.isArray(value)) {
+                    value.forEach(walk);
+                } else if (typeof value.lat === 'number' && typeof value.lng === 'number') {
+                    flattened.push(value);
+                }
+            }
+            walk(latlngs);
+            return flattened;
+        }
+
+        function imperiumClickHitsInteractiveFeature(latlng) {
+            if (!latlng) return false;
+
+            var clickPoint = map.latLngToLayerPoint(latlng);
+            // While measuring, map features are visually locked so they do not highlight.
+            // This tiny hit zone only blocks a measurement point if the click is almost
+            // exactly on the feature itself. Clicking near planets or hyperlanes still works.
+            var pointBlockRadius = 0.75;
+            var lineBlockRadius = 0.75;
+            var hit = false;
+
+            imperiumInteractiveMeasureLayers().forEach(function(layer) {
+                if (hit || !layer || !layer.eachLayer) return;
+
+                layer.eachLayer(function(each) {
+                    if (hit) return;
+
+                    if (each.getLatLng && !each.getLatLngs) {
+                        var featurePoint = map.latLngToLayerPoint(each.getLatLng());
+                        if (clickPoint.distanceTo(featurePoint) <= pointBlockRadius) {
+                            hit = true;
+                        }
+                        return;
+                    }
+
+                    if (each.getLatLngs) {
+                        var points = imperiumFlattenLatLngs(each.getLatLngs()).map(function(eachLatLng) {
+                            return map.latLngToLayerPoint(eachLatLng);
+                        });
+
+                        for (var i = 1; i < points.length; i++) {
+                            if (L.LineUtil.pointToSegmentDistance(clickPoint, points[i - 1], points[i]) <= lineBlockRadius) {
+                                hit = true;
+                                break;
+                            }
+                        }
+                    }
+                });
+            });
+
+            return hit;
+        }
+
+        function imperiumIsMeasurementBlockedTarget(originalEvent) {
+            if (!originalEvent || !originalEvent.target) return false;
+
+            var target = originalEvent.target;
+
+            if (target.classList && target.classList.contains('leaflet-interactive')) {
+                return true;
+            }
+
+            if (target.closest && target.closest('.leaflet-interactive')) {
+                return true;
+            }
+
+            return false;
+        }
+
+        function imperiumBlockFeatureClicksWhileMeasuring(layer) {
+            if (!layer || !layer.eachLayer) return;
+
+            layer.eachLayer(function(each) {
+                each.on('click', function(e) {
+                    if (!imperiumMeasureState.active) return;
+
+                    if (e.originalEvent) {
+                        e.originalEvent._imperiumMeasurementBlocked = true;
+                        if (e.originalEvent.preventDefault) e.originalEvent.preventDefault();
+                        if (e.originalEvent.stopPropagation) e.originalEvent.stopPropagation();
+                    }
+
+                    if (L.DomEvent && L.DomEvent.stop && e.originalEvent) {
+                        L.DomEvent.stop(e.originalEvent);
+                    }
+
+                    map.closePopup();
+                    return false;
+                });
+
+                each.on('mouseover', function(e) {
+                    if (!imperiumMeasureState.active) return;
+                    if (e.originalEvent && L.DomEvent && L.DomEvent.stop) {
+                        L.DomEvent.stop(e.originalEvent);
+                    }
+                    imperiumResetInteractiveLayerStyles();
+                    return false;
+                });
+            });
+        }
+
+        function imperiumMeasureDistanceMeters() {
+            var total = 0;
+            for (var i = 1; i < imperiumMeasureState.points.length; i++) {
+                total += map.distance(imperiumMeasureState.points[i - 1], imperiumMeasureState.points[i]);
+            }
+            return total;
+        }
+
+        function imperiumClearMeasurementLayers() {
+            imperiumMeasureState.markers.forEach(function(marker) {
+                map.removeLayer(marker);
+            });
+            imperiumMeasureState.markers = [];
+            if (imperiumMeasureState.line) {
+                map.removeLayer(imperiumMeasureState.line);
+                imperiumMeasureState.line = null;
+            }
+            if (imperiumMeasureState.lineGlow) {
+                map.removeLayer(imperiumMeasureState.lineGlow);
+                imperiumMeasureState.lineGlow = null;
+            }
+        }
+
+        function imperiumResetMeasurement() {
+            imperiumMeasureState.active = false;
+            imperiumMeasureState.finished = false;
+            imperiumMeasureState.points = [];
+            imperiumSetMeasurementInteractionLock(false);
+            imperiumClearMeasurementLayers();
+            map.getContainer().style.cursor = '';
+            if (map.doubleClickZoom) {
+                map.doubleClickZoom.enable();
+            }
+            if (imperiumMeasureState.controlButton) {
+                imperiumMeasureState.controlButton.classList.remove('is-active');
+            }
+        }
+
+        function imperiumUpdateMeasurementGeometry() {
+            if (imperiumMeasureState.line) {
+                map.removeLayer(imperiumMeasureState.line);
+                imperiumMeasureState.line = null;
+            }
+            if (imperiumMeasureState.lineGlow) {
+                map.removeLayer(imperiumMeasureState.lineGlow);
+                imperiumMeasureState.lineGlow = null;
+            }
+
+            if (imperiumMeasureState.points.length >= 2) {
+                // Measurement path is deliberately different from hyperspace lanes:
+                // crimson outer rail + ash inner rail, solid, with a glow.
+                imperiumMeasureState.lineGlow = L.polyline(imperiumMeasureState.points, {
+                    pane: 'pane_ImperiumMeasurement',
+                    color: 'rgba(125,21,27,0.92)',
+                    weight: 8,
+                    opacity: 0.88,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                    interactive: false
+                }).addTo(map);
+
+                imperiumMeasureState.line = L.polyline(imperiumMeasureState.points, {
+                    pane: 'pane_ImperiumMeasurement',
+                    color: 'rgba(216,211,196,0.98)',
+                    weight: 2.4,
+                    opacity: 1,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                    interactive: false
+                }).addTo(map);
+            }
+        }
+
+        function imperiumEnsurePanel() {
+            if (imperiumMeasureState.panel) return imperiumMeasureState.panel;
+
+            var panel = document.createElement('div');
+            panel.className = 'imperium-measure-panel is-hidden';
+            panel.innerHTML = [
+                '<h3>Measure Distance</h3>',
+                '<p class="imperium-measure-instruction"></p>',
+                '<div class="imperium-measure-grid">',
+                    '<div class="imperium-measure-stat">',
+                        '<strong>Space Meter</strong>',
+                        '<span class="imperium-measure-distance">0</span>',
+                    '</div>',
+                    '<div class="imperium-measure-stat">',
+                        '<strong>Travel Time</strong>',
+                        '<span class="imperium-measure-time">00h 00m 00s</span>',
+                        '<small>Formula: 1 map metre = 0.25 seconds</small>',
+                    '</div>',
+                '</div>',
+                '<div class="imperium-measure-actions">',
+                    '<button type="button" class="imperium-measure-btn" data-action="cancel">Cancel</button>',
+                    '<button type="button" class="imperium-measure-btn" data-action="finish">Finish Measurement</button>',
+                '</div>'
+            ].join('');
+
+            document.body.appendChild(panel);
+            panel.addEventListener('click', function(event) {
+                var action = event.target && event.target.getAttribute('data-action');
+                if (action === 'cancel') {
+                    imperiumHideMeasurementPanel();
+                    imperiumResetMeasurement();
+                } else if (action === 'finish') {
+                    if (imperiumMeasureState.finished) {
+                        imperiumStartMeasurement(true);
+                    } else {
+                        imperiumFinishMeasurement();
+                    }
+                }
+            });
+            imperiumMeasureState.panel = panel;
+            return panel;
+        }
+
+        function imperiumUpdatePanel() {
+            var panel = imperiumEnsurePanel();
+            var instruction = panel.querySelector('.imperium-measure-instruction');
+            var distanceNode = panel.querySelector('.imperium-measure-distance');
+            var timeNode = panel.querySelector('.imperium-measure-time');
+            var finishBtn = panel.querySelector('[data-action="finish"]');
+            var meters = imperiumMeasureDistanceMeters();
+            var travelText = imperiumFormatTravelTime(meters * 0.25);
+
+            distanceNode.textContent = imperiumFormatNumber(meters);
+            timeNode.textContent = travelText;
+
+            if (imperiumMeasureState.finished) {
+                instruction.textContent = imperiumMeasureState.points.length >= 2
+                    ? 'Measurement complete. Start a new measurement or cancel to clear.'
+                    : 'Measurement complete.';
+                finishBtn.textContent = 'New Measurement';
+            } else if (imperiumMeasureState.points.length === 0) {
+                instruction.textContent = 'Click on the map to add points and begin measuring.';
+                finishBtn.textContent = 'Finish Measurement';
+            } else if (imperiumMeasureState.points.length === 1) {
+                instruction.textContent = 'Add another point to begin calculating distance and travel time.';
+                finishBtn.textContent = 'Finish Measurement';
+            } else {
+                instruction.textContent = 'Continue placing points, or finish the measurement when ready.';
+                finishBtn.textContent = 'Finish Measurement';
+            }
+        }
+
+        function imperiumShowMeasurementPanel() {
+            var panel = imperiumEnsurePanel();
+            panel.classList.remove('is-hidden');
+            imperiumUpdatePanel();
+        }
+
+        function imperiumHideMeasurementPanel() {
+            if (imperiumMeasureState.panel) {
+                imperiumMeasureState.panel.classList.add('is-hidden');
+            }
+        }
+
+        function imperiumStartMeasurement(clearExisting) {
+            if (clearExisting) {
+                imperiumResetMeasurement();
+            }
+            if (typeof imperiumSetDrawActive === 'function') {
+                imperiumSetDrawActive(false);
+            }
+            imperiumMeasureState.active = true;
+            imperiumMeasureState.finished = false;
+            imperiumSetMeasurementInteractionLock(true);
+            map.getContainer().style.cursor = 'crosshair';
+            if (map.doubleClickZoom) {
+                map.doubleClickZoom.disable();
+            }
+            if (imperiumMeasureState.controlButton) {
+                imperiumMeasureState.controlButton.classList.add('is-active');
+            }
+            imperiumShowMeasurementPanel();
+        }
+
+        function imperiumFinishMeasurement() {
+            imperiumMeasureState.active = false;
+            imperiumMeasureState.finished = true;
+            imperiumSetMeasurementInteractionLock(false);
+            map.getContainer().style.cursor = '';
+            if (map.doubleClickZoom) {
+                map.doubleClickZoom.enable();
+            }
+            imperiumUpdatePanel();
+        }
+
+        var ImperiumMeasureControl = L.Control.extend({
+            options: { position: 'topleft' },
+            onAdd: function() {
+                var container = L.DomUtil.create('div', 'leaflet-bar imperium-custom-measure-control');
+                var link = L.DomUtil.create('a', '', container);
+                link.href = '#';
+                link.title = 'Measure Distance';
+                link.setAttribute('aria-label', 'Measure Distance');
+                link.innerHTML = '<span class="fas fa-ruler"></span>';
+                imperiumMeasureState.controlButton = link;
+
+                L.DomEvent.disableClickPropagation(container);
+                L.DomEvent.on(link, 'click', function(e) {
+                    L.DomEvent.stop(e);
+                    imperiumStartMeasurement(true);
+                });
+                return container;
+            }
+        });
+        map.addControl(new ImperiumMeasureControl());
+
+        map.on('popupopen', function() {
+            if (imperiumMeasureState.active) {
+                map.closePopup();
+            }
+        });
+
+        map.on('click', function(e) {
+            if (!imperiumMeasureState.active) return;
+
+            imperiumMeasureState.points.push(e.latlng);
+            var marker = L.circleMarker(e.latlng, {
+                pane: 'pane_ImperiumMeasurement',
+                radius: 5,
+                color: 'rgba(216,211,196,0.98)',
+                weight: 2.5,
+                fillColor: 'rgba(125,21,27,1)',
+                fillOpacity: 1,
+                interactive: false
+            }).addTo(map);
+            imperiumMeasureState.markers.push(marker);
+            imperiumUpdateMeasurementGeometry();
+            imperiumUpdatePanel();
+        });
+
+        var imperiumDrawState = {
+            active: false,
+            drawing: false,
+            canvas: null,
+            context: null,
+            panel: null,
+            controlButton: null,
+            layer: null,
+            lines: [],
+            currentLine: null,
+            color: '#d2ad54',
+            size: 4,
+            opacity: 0.96,
+            lastPoint: null
+        };
+
+        function imperiumEnsureDrawCanvas() {
+            if (imperiumDrawState.canvas) return imperiumDrawState.canvas;
+
+            var canvas = document.createElement('canvas');
+            canvas.className = 'imperium-draw-canvas';
+            map.getContainer().appendChild(canvas);
+            imperiumDrawState.canvas = canvas;
+            imperiumDrawState.context = canvas.getContext('2d');
+            imperiumResizeDrawCanvas();
+
+            canvas.addEventListener('pointerdown', imperiumBeginDraw);
+            canvas.addEventListener('pointermove', imperiumContinueDraw);
+            canvas.addEventListener('pointerup', imperiumEndDraw);
+            canvas.addEventListener('pointercancel', imperiumEndDraw);
+            canvas.addEventListener('pointerleave', imperiumEndDraw);
+            return canvas;
+        }
+
+        function imperiumResizeDrawCanvas() {
+            if (!imperiumDrawState.canvas) return;
+
+            var canvas = imperiumDrawState.canvas;
+            var size = map.getSize();
+            var ratio = window.devicePixelRatio || 1;
+            canvas.width = Math.max(1, Math.round(size.x * ratio));
+            canvas.height = Math.max(1, Math.round(size.y * ratio));
+            canvas.style.width = size.x + 'px';
+            canvas.style.height = size.y + 'px';
+
+            imperiumDrawState.context = canvas.getContext('2d');
+            imperiumDrawState.context.setTransform(ratio, 0, 0, ratio, 0, 0);
+        }
+
+        function imperiumDrawPointerPoint(event) {
+            var rect = imperiumDrawState.canvas.getBoundingClientRect();
+            return {
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top
+            };
+        }
+
+        function imperiumBeginDraw(event) {
+            if (!imperiumDrawState.active) return;
+            event.preventDefault();
+            if (!imperiumDrawState.layer) {
+                imperiumDrawState.layer = L.featureGroup([], { pane: 'pane_ImperiumDraw' }).addTo(map);
+            }
+
+            imperiumDrawState.drawing = true;
+            imperiumDrawState.lastPoint = imperiumDrawPointerPoint(event);
+            imperiumDrawState.currentLine = L.polyline([
+                map.containerPointToLatLng(L.point(imperiumDrawState.lastPoint.x, imperiumDrawState.lastPoint.y))
+            ], {
+                pane: 'pane_ImperiumDraw',
+                color: imperiumDrawState.color,
+                weight: imperiumDrawState.size,
+                opacity: imperiumDrawState.opacity,
+                lineCap: 'round',
+                lineJoin: 'round',
+                interactive: false
+            }).addTo(imperiumDrawState.layer);
+            imperiumDrawState.lines.push(imperiumDrawState.currentLine);
+            imperiumDrawState.canvas.setPointerCapture(event.pointerId);
+        }
+
+        function imperiumContinueDraw(event) {
+            if (!imperiumDrawState.active || !imperiumDrawState.drawing) return;
+            event.preventDefault();
+            var point = imperiumDrawPointerPoint(event);
+            if (imperiumDrawState.currentLine) {
+                imperiumDrawState.currentLine.addLatLng(map.containerPointToLatLng(L.point(point.x, point.y)));
+            }
+            imperiumDrawState.lastPoint = point;
+        }
+
+        function imperiumEndDraw(event) {
+            if (!imperiumDrawState.drawing) return;
+            imperiumDrawState.drawing = false;
+            imperiumDrawState.lastPoint = null;
+            imperiumDrawState.currentLine = null;
+            if (event && imperiumDrawState.canvas.hasPointerCapture(event.pointerId)) {
+                imperiumDrawState.canvas.releasePointerCapture(event.pointerId);
+            }
+        }
+
+        function imperiumEnsureDrawPanel() {
+            if (imperiumDrawState.panel) return imperiumDrawState.panel;
+
+            var panel = document.createElement('div');
+            panel.className = 'imperium-draw-panel is-hidden';
+            panel.innerHTML = [
+                '<h3>Draw Orders</h3>',
+                '<label class="imperium-draw-row"><span>Colour</span><input type="color" data-action="color" value="' + imperiumDrawState.color + '"></label>',
+                '<label class="imperium-draw-row"><span>Width</span><input type="range" data-action="size" min="2" max="18" step="1" value="' + imperiumDrawState.size + '"></label>',
+                '<label class="imperium-draw-row"><span>Opacity</span><input type="range" data-action="opacity" min="0.15" max="1" step="0.05" value="' + imperiumDrawState.opacity + '"></label>',
+                '<div class="imperium-draw-actions">',
+                    '<button type="button" class="imperium-draw-btn" data-action="undo">Undo</button>',
+                    '<button type="button" class="imperium-draw-btn" data-action="clear">Clear</button>',
+                    '<button type="button" class="imperium-draw-btn" data-action="close">Close</button>',
+                '</div>'
+            ].join('');
+
+            document.body.appendChild(panel);
+            panel.addEventListener('input', function(event) {
+                var action = event.target && event.target.getAttribute('data-action');
+                if (action === 'color') {
+                    imperiumDrawState.color = event.target.value;
+                } else if (action === 'size') {
+                    imperiumDrawState.size = Number(event.target.value);
+                } else if (action === 'opacity') {
+                    imperiumDrawState.opacity = Number(event.target.value);
+                    imperiumUpdateDrawingOpacity();
+                }
+            });
+            panel.addEventListener('click', function(event) {
+                var action = event.target && event.target.getAttribute('data-action');
+                if (action === 'undo') {
+                    imperiumUndoDrawing();
+                } else if (action === 'clear') {
+                    imperiumClearDrawing();
+                } else if (action === 'close') {
+                    imperiumSetDrawActive(false);
+                }
+            });
+            imperiumDrawState.panel = panel;
+            return panel;
+        }
+
+        function imperiumSetDrawActive(active) {
+            imperiumEnsureDrawCanvas();
+            imperiumEnsureDrawPanel();
+
+            imperiumDrawState.active = active;
+            imperiumDrawState.canvas.classList.toggle('is-active', active);
+            imperiumDrawState.panel.classList.toggle('is-hidden', !active);
+            if (imperiumDrawState.controlButton) {
+                imperiumDrawState.controlButton.classList.toggle('is-active', active);
+            }
+
+            if (active) {
+                imperiumHideMeasurementPanel();
+                imperiumResetMeasurement();
+                map.closePopup();
+                map.dragging.disable();
+                map.getContainer().style.cursor = 'crosshair';
+            } else {
+                imperiumEndDraw();
+                map.dragging.enable();
+                map.getContainer().style.cursor = '';
+            }
+        }
+
+        function imperiumClearDrawing() {
+            imperiumEnsureDrawCanvas();
+            if (imperiumDrawState.layer) {
+                imperiumDrawState.layer.clearLayers();
+            }
+            imperiumDrawState.lines = [];
+            imperiumDrawState.currentLine = null;
+        }
+
+        function imperiumUndoDrawing() {
+            var line = imperiumDrawState.lines.pop();
+            if (line && imperiumDrawState.layer) {
+                imperiumDrawState.layer.removeLayer(line);
+            }
+        }
+
+        function imperiumUpdateDrawingOpacity() {
+            imperiumDrawState.lines.forEach(function(line) {
+                if (line && line.setStyle) {
+                    line.setStyle({ opacity: imperiumDrawState.opacity });
+                }
+            });
+        }
+
+        var ImperiumDrawControl = L.Control.extend({
+            options: { position: 'topleft' },
+            onAdd: function() {
+                var container = L.DomUtil.create('div', 'leaflet-bar imperium-draw-control');
+                var drawLink = L.DomUtil.create('a', '', container);
+
+                drawLink.href = '#';
+                drawLink.title = 'Draw Orders';
+                drawLink.setAttribute('aria-label', 'Draw Orders');
+                drawLink.innerHTML = '<span class="fas fa-pencil-alt"></span>';
+                imperiumDrawState.controlButton = drawLink;
+
+                L.DomEvent.disableClickPropagation(container);
+                L.DomEvent.on(drawLink, 'click', function(e) {
+                    L.DomEvent.stop(e);
+                    imperiumSetDrawActive(!imperiumDrawState.active);
+                });
+                return container;
+            }
+        });
+        map.addControl(new ImperiumDrawControl());
+
+        map.on('resize', imperiumResizeDrawCanvas);
+        map.on('zoomstart movestart', function() {
+            if (imperiumDrawState.active) {
+                imperiumSetDrawActive(false);
+            }
+        });
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && (imperiumMeasureState.active || imperiumMeasureState.finished)) {
+                imperiumHideMeasurementPanel();
+                imperiumResetMeasurement();
+            } else if (event.key === 'Escape' && imperiumDrawState.active) {
+                imperiumSetDrawActive(false);
+            }
+        });
+
         setBounds();
         </script>        
     </body>
