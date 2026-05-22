@@ -681,6 +681,20 @@
             box-shadow: inset 0 0 0 1px rgba(210,173,84,0.22);
         }
 
+        .imperium-custom-measure-control a {
+            width: auto !important;
+            min-width: 92px;
+            padding: 0 10px;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.11em;
+            text-transform: uppercase;
+        }
+
         .imperium-draw-control a.is-active {
             background: rgba(125,21,27,0.82) !important;
             color: var(--imp-ash) !important;
@@ -988,6 +1002,7 @@
         <script src="data/Wormhole_8.js"></script>
         <script src="data/PlanetNPC_9.js"></script>
         <script src="data/PlanetPlayers_10.js"></script>
+        <script src="data/Events_11.js"></script>
         <script>
         var crs = new L.Proj.CRS('EPSG:3857', '+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs', {
             resolutions: [2800, 1400, 700, 350, 175, 84, 42, 21, 11.2, 5.6, 2.8, 1.4, 0.7, 0.35, 0.14, 0.07],
@@ -1090,6 +1105,12 @@
                 Military: 'Weak',
                 Resource: 'Raw Materials',
                 Species: 'Troghorn'
+            },
+            'evertrust interstellar group': {
+                Economy: 'Stagnant',
+                Military: 'Very Weak',
+                Resource: 'Manufactured Goods',
+                Species: 'Polos'
             }
         };
 
@@ -1605,7 +1626,46 @@
         });
         bounds_group.addLayer(layer_PlanetPlayers_10);
         map.addLayer(layer_PlanetPlayers_10);
+        function pop_Events_11(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2"><strong>Name</strong><br />' + (feature.properties['Name'] !== null ? autolinker.link(String(feature.properties['Name']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    ' + (feature.properties['Info'] !== null ? '<tr>\
+                        <td colspan="2"><strong>Info</strong><br />' + autolinker.link(String(feature.properties['Info']).replace(/'/g, '\'').toLocaleString()) + '</td>\
+                    </tr>' : '') + '\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        map.createPane('pane_Events_11');
+        map.getPane('pane_Events_11').style.zIndex = 411;
+        map.getPane('pane_Events_11').style['mix-blend-mode'] = 'normal';
+        var icon_Events_11 = L.icon({
+            iconUrl: 'markers/Events_11.svg',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+            popupAnchor: [0, -12]
+        });
+        var layer_Events_11 = new L.geoJson(json_Events_11, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Events_11',
+            layerName: 'layer_Events_11',
+            pane: 'pane_Events_11',
+            onEachFeature: pop_Events_11,
+            pointToLayer: function (feature, latlng) {
+                return L.marker(latlng, { icon: icon_Events_11 });
+            },
+        });
+        bounds_group.addLayer(layer_Events_11);
+        map.addLayer(layer_Events_11);
         var overlaysTree = [
+            {label: '<img src="legend/Events_11.png" /> Events', layer: layer_Events_11},
             {label: '<img src="legend/PlanetPlayers_10.png" /> Planet (Players)', layer: layer_PlanetPlayers_10},
             {label: '<img src="legend/PlanetNPC_9.png" /> Planet (NPC)', layer: layer_PlanetNPC_9},
             {label: '<img src="legend/Wormhole_8.png" /> Wormhole', layer: layer_Wormhole_8},
@@ -1619,15 +1679,32 @@
             {label: '<img src="legend/GalacticArm_2.png" /> Galactic Arm', layer: layer_GalacticArm_2},
             {label: '<img src="legend/GalacticLight_1.png" /> Galactic Light', layer: layer_GalacticLight_1},
             {label: '<img src="legend/BackgroundStars_0.png" /> Background Stars', layer: layer_BackgroundStars_0},]},]
-        var lay = L.control.layers.tree(null, overlaysTree,{
-            //namedToggle: true,
-            //selectorBack: false,
-            //closedSymbol: '&#8862; &#x1f5c0;',
-            //openedSymbol: '&#8863; &#x1f5c1;',
-            //collapseAll: 'Collapse all',
-            //expandAll: 'Expand all',
-            collapsed: false, 
-        });
+        var lay = (L.control.layers && L.control.layers.tree)
+            ? L.control.layers.tree(null, overlaysTree,{
+                //namedToggle: true,
+                //selectorBack: false,
+                //closedSymbol: '&#8862; &#x1f5c0;',
+                //openedSymbol: '&#8863; &#x1f5c1;',
+                //collapseAll: 'Collapse all',
+                //expandAll: 'Expand all',
+                collapsed: false,
+            })
+            : L.control.layers(null, {
+                'Events': layer_Events_11,
+                'Planet (Players)': layer_PlanetPlayers_10,
+                'Planet (NPC)': layer_PlanetNPC_9,
+                'Wormhole': layer_Wormhole_8,
+                'Galactic Star': layer_GalacticStar_7,
+                'Hyperspace Lanes': layer_HyperspaceLanes_6,
+                'Sector 1': layer_Sector1_5,
+                'Sector 2': layer_Sector2_4,
+                'Sector 3': layer_Sector3_3,
+                'Galactic Arm': layer_GalacticArm_2,
+                'Galactic Light': layer_GalacticLight_1,
+                'Background Stars': layer_BackgroundStars_0
+            }, {
+                collapsed: false
+            });
         lay.addTo(map);
 		document.addEventListener("DOMContentLoaded", function() {
             // set new Layers List height which considers toggle icon
@@ -1644,6 +1721,7 @@
             var isLayersListExpanded = true;
             var controlLayersElement = document.querySelector('.leaflet-control-layers');
             var toggleLayerControl = document.querySelector('.leaflet-control-layers-toggle');
+            if (!controlLayersElement || !toggleLayerControl) return;
             // toggle Collapsed/Expanded and apply new Layers List height
             toggleLayerControl.addEventListener('click', function() {
                 if (isLayersListExpanded) {
@@ -1686,6 +1764,13 @@
                 coord.textContent = 'Cursor: X ' + e.latlng.lng.toFixed(4) + ' / Y ' + e.latlng.lat.toFixed(4) + ' // EPSG:3857 strategic grid';
             }
         });
+
+        map.getContainer().addEventListener('pointermove', function(event) {
+            var coord = document.getElementById('imperiumCoordinates');
+            if (!coord || !map.mouseEventToLatLng) return;
+            var latlng = map.mouseEventToLatLng(event);
+            coord.textContent = 'Cursor: X ' + latlng.lng.toFixed(4) + ' / Y ' + latlng.lat.toFixed(4) + ' // EPSG:3857 strategic grid';
+        }, { passive: true });
 
         function imperialHover(layer, hoverStyle) {
             layer.eachLayer(function(each) {
@@ -2079,7 +2164,7 @@
                 link.href = '#';
                 link.title = 'Measure Distance';
                 link.setAttribute('aria-label', 'Measure Distance');
-                link.innerHTML = '<span class="fas fa-ruler"></span>';
+                link.innerHTML = '<span class="fas fa-ruler"></span><span>Measure</span>';
                 imperiumMeasureState.controlButton = link;
 
                 L.DomEvent.disableClickPropagation(container);
